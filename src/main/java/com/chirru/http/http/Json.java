@@ -36,7 +36,7 @@ public final class Json {
 
     private static String escape(String value) {
         return value.replace("\\", "\\\\")
-                .replace(""", "\"")
+                .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
