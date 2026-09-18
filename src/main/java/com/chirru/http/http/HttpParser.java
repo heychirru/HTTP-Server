@@ -3,6 +3,7 @@ package com.chirru.http.http;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,15 +21,11 @@ public final class HttpParser {
 
         while ((current = input.read()) != -1) {
             headerBytes.write(current);
-
-            if ((matched == 0 && current == '\r') || (matched == 2 && current == '\r')) {
-                matched++;
-            } else if ((matched == 1 && current == '\n') || (matched == 3 && current == '\n')) {
+            if ((matched == 0 && current == '\r') || (matched == 2 && current == '\r')) matched++;
+            else if ((matched == 1 && current == '\n') || (matched == 3 && current == '\n')) {
                 matched++;
                 if (matched == 4) break;
-            } else {
-                matched = current == '\r' ? 1 : 0;
-            }
+            } else matched = current == '\r' ? 1 : 0;
 
             if (headerBytes.size() > MAX_HEADER_LINE * 100) {
                 throw new IOException("HTTP headers too large");
@@ -37,8 +34,7 @@ public final class HttpParser {
 
         if (headerBytes.size() == 0) return null;
 
-        String headerText = headerBytes.toString(StandardCharsets.ISO_8859_1);
-        String[] lines = headerText.split("\\r\\n");
+        String[] lines = headerBytes.toString(StandardCharsets.ISO_8859_1).split("\\r\\n");
         if (lines.length == 0) throw new IOException("Malformed HTTP request");
 
         String[] parts = lines[0].split(" ", 3);
@@ -63,14 +59,33 @@ public final class HttpParser {
         String target = parts[1];
         int queryIndex = target.indexOf('?');
         String path = queryIndex >= 0 ? target.substring(0, queryIndex) : target;
+        String query = queryIndex >= 0 ? target.substring(queryIndex + 1) : "";
 
         return new HttpRequest(parts[0], path, parts[2], Map.copyOf(headers),
-                new String(bodyBytes, StandardCharsets.UTF_8));
+                new String(bodyBytes, StandardCharsets.UTF_8), Map.of(), parseQuery(query));
+    }
+
+    private static Map<String, String> parseQuery(String query) throws IOException {
+        if (query.isEmpty()) return Map.of();
+
+        Map<String, String> params = new LinkedHashMap<>();
+        for (String pair : query.split("&")) {
+            if (pair.isEmpty()) continue;
+            int equals = pair.indexOf('=');
+            String rawName = equals >= 0 ? pair.substring(0, equals) : pair;
+            String rawValue = equals >= 0 ? pair.substring(equals + 1) : "";
+            try {
+                params.put(URLDecoder.decode(rawName, StandardCharsets.UTF_8),
+                        URLDecoder.decode(rawValue, StandardCharsets.UTF_8));
+            } catch (IllegalArgumentException e) {
+                throw new IOException("Invalid query parameter encoding", e);
+            }
+        }
+        return Map.copyOf(params);
     }
 
     private static int parseContentLength(String value) throws IOException {
         if (value == null || value.isBlank()) return 0;
-
         try {
             int length = Integer.parseInt(value);
             if (length < 0 || length > MAX_BODY_SIZE) throw new IOException("Request body too large");
