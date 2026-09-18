@@ -25,7 +25,7 @@ Java 21+ and Maven are used for the project build.
 | 5 | Query parameters + HTTP keep-alive | Done |
 | 6 | Concurrency, errors, logging and test infrastructure | Done |
 | 7 | LRU static-file caching | Done |
-| 8 | HTTP protocol hardening | Next |
+| 8 | HTTP protocol hardening | In progress |
 
 ## Features implemented
 
@@ -366,20 +366,31 @@ These measurements are local development measurements, not production performanc
 
 ## Phase 8 — HTTP Protocol Hardening
 
-Next phase focuses on making the protocol implementation more correct and robust.
+Phase 8 is now in progress. The first protocol-hardening layer is implemented.
 
-Planned:
+Implemented:
 
-- [ ] Validate HTTP method and version
-- [ ] Require Host for HTTP/1.1
-- [ ] Handle unsupported transfer encodings explicitly
-- [ ] Improve request-target validation
-- [ ] Improve header parsing rules
-- [ ] Add HEAD support
-- [ ] Add response headers such as Date and Server
-- [ ] Improve static-file cache invalidation
+- [x] Validate supported HTTP methods
+- [x] Validate HTTP/1.0 and HTTP/1.1 versions
+- [x] Require Host for HTTP/1.1
+- [x] Reject unsupported Transfer-Encoding
+- [x] Improve request-target validation
+- [x] Validate HTTP header names
+- [x] Limit total header size and header count
+- [x] Reject duplicate Content-Length
+- [x] Add HEAD support
+- [x] Add Date and Server response headers
+- [x] Invalidate stale static-file cache entries using file metadata
+- [x] Add integration coverage for HEAD, query parameters and 405
+
+Remaining:
+
+- [ ] Support absolute-form request targets where appropriate
+- [ ] Add OPTIONS handling
 - [ ] Add more protocol-level integration tests
-- [ ] Add malformed-request test cases
+- [ ] Add raw malformed-request test cases
+- [ ] Add conditional requests and 304 Not Modified
+- [ ] Add Range requests and 206 Partial Content
 
 ## DSA and systems concepts
 
