@@ -42,16 +42,21 @@ public record HttpResponse(int statusCode, String reason, String contentType, by
                 body.getBytes(StandardCharsets.UTF_8));
     }
 
-    public byte[] toBytes() {
+    public byte[] toBytes(boolean keepAlive) {
+        String connection = keepAlive ? "keep-alive" : "close";
         String headers = "HTTP/1.1 " + statusCode + " " + reason + "\r\n"
                 + "Content-Type: " + contentType + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"
-                + "Connection: close\r\n"
+                + "Connection: " + connection + "\r\n"
                 + "\r\n";
         byte[] headerBytes = headers.getBytes(StandardCharsets.ISO_8859_1);
         byte[] result = new byte[headerBytes.length + body.length];
         System.arraycopy(headerBytes, 0, result, 0, headerBytes.length);
         System.arraycopy(body, 0, result, headerBytes.length, body.length);
         return result;
+    }
+
+    public byte[] toBytes() {
+        return toBytes(false);
     }
 }
