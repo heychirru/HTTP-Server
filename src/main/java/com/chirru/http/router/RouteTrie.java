@@ -2,6 +2,7 @@ package com.chirru.http.router;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Trie for HTTP route matching.
@@ -35,37 +36,40 @@ public final class RouteTrie {
     }
 
     public Match match(String method, String path) {
-        String[] segments = segments(path);
-        Map<String, String> params = new LinkedHashMap<>();
-        Node node = match(root, segments, 0, params);
-
-        if (node == null) {
-            return null;
-        }
+        Node node = findNode(path);
+        if (node == null) return null;
 
         Handler handler = node.handlers.get(method);
-        return handler == null ? null : new Match(handler, params);
+        if (handler == null) return null;
+
+        Map<String, String> params = new LinkedHashMap<>();
+        findNode(root, segments(path), 0, params);
+        return new Match(handler, params);
     }
 
-    private Node match(Node node, String[] segments, int index, Map<String, String> params) {
-        if (index == segments.length) {
-            return node;
-        }
+    public Set<String> allowedMethods(String path) {
+        Node node = findNode(path);
+        return node == null ? Set.of() : Set.copyOf(node.handlers.keySet());
+    }
+
+    private Node findNode(String path) {
+        Map<String, String> ignoredParams = new LinkedHashMap<>();
+        return findNode(root, segments(path), 0, ignoredParams);
+    }
+
+    private Node findNode(Node node, String[] segments, int index, Map<String, String> params) {
+        if (index == segments.length) return node;
 
         Node staticNode = node.staticChildren.get(segments[index]);
         if (staticNode != null) {
-            Node result = match(staticNode, segments, index + 1, params);
-            if (result != null) {
-                return result;
-            }
+            Node result = findNode(staticNode, segments, index + 1, params);
+            if (result != null) return result;
         }
 
         if (node.parameterChild != null) {
             params.put(node.parameterName, segments[index]);
-            Node result = match(node.parameterChild, segments, index + 1, params);
-            if (result != null) {
-                return result;
-            }
+            Node result = findNode(node.parameterChild, segments, index + 1, params);
+            if (result != null) return result;
             params.remove(node.parameterName);
         }
 
@@ -82,9 +86,7 @@ public final class RouteTrie {
         if (!path.startsWith("/")) {
             throw new IllegalArgumentException("Route path must start with /");
         }
-        if (path.equals("/")) {
-            return new String[0];
-        }
+        if (path.equals("/")) return new String[0];
         return path.substring(1).split("/");
     }
 
