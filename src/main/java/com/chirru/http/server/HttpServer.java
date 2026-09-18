@@ -40,8 +40,11 @@ public final class HttpServer {
 
     public int getPort() {
         ServerSocket socket = serverSocket;
-        if (socket == null) return -1;
-        return socket.getLocalPort();
+        return socket == null ? -1 : socket.getLocalPort();
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 
     HttpResponse dispatch(HttpRequest request) {
