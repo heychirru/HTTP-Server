@@ -7,10 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-/**
- * Serves files from a configured directory without using a web framework.
- * Path traversal is prevented by resolving and normalizing the requested path.
- */
 public final class StaticFileServer {
     private static final Map<String, String> MIME_TYPES = Map.ofEntries(
             Map.entry(".html", "text/html; charset=UTF-8"),
@@ -39,12 +35,11 @@ public final class StaticFileServer {
             return HttpResponse.badRequest("Invalid file path");
         }
 
-        String cleanPath = requestPath.split("\\?", 2)[0];
+        int queryIndex = requestPath.indexOf('?');
+        String cleanPath = queryIndex >= 0 ? requestPath.substring(0, queryIndex) : requestPath;
         Path requested = root.resolve(cleanPath.substring(1)).normalize();
 
-        if (!requested.startsWith(root)) {
-            return HttpResponse.forbidden("Forbidden");
-        }
+        if (!requested.startsWith(root)) return HttpResponse.forbidden("Forbidden");
 
         if (Files.isDirectory(requested)) {
             requested = requested.resolve("index.html").normalize();
@@ -55,8 +50,7 @@ public final class StaticFileServer {
         }
 
         try {
-            byte[] content = Files.readAllBytes(requested);
-            return new HttpResponse(200, "OK", contentType(requested), content);
+            return new HttpResponse(200, "OK", contentType(requested), Files.readAllBytes(requested));
         } catch (IOException e) {
             return HttpResponse.internalServerError("Could not read file");
         }
@@ -65,11 +59,8 @@ public final class StaticFileServer {
     private String contentType(Path path) {
         String name = path.getFileName().toString().toLowerCase();
         int dot = name.lastIndexOf('.');
-        if (dot >= 0) {
-            return MIME_TYPES.getOrDefault(
-                    name.substring(dot),
-                    "application/octet-stream");
-        }
-        return "application/octet-stream";
+        return dot >= 0
+                ? MIME_TYPES.getOrDefault(name.substring(dot), "application/octet-stream")
+                : "application/octet-stream";
     }
 }
