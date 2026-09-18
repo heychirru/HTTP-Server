@@ -6,6 +6,7 @@ import com.chirru.http.http.HttpResponse;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.Map;
 
 public final class StaticFileServer {
@@ -26,7 +27,7 @@ public final class StaticFileServer {
     );
 
     private final Path root;
-    private final LruCache<Path, byte[]> cache;
+    private final LruCache<Path, CachedFile> cache;
 
     public StaticFileServer(Path root) {
         this(root, 128);
@@ -57,11 +58,18 @@ public final class StaticFileServer {
         }
 
         try {
-            byte[] content = cache.get(requested);
-            if (content == null) {
-                content = Files.readAllBytes(requested);
-                cache.put(requested, content);
+            FileTime lastModified = Files.getLastModifiedTime(requested);
+            long size = Files.size(requested);
+
+            CachedFile cached = cache.get(requested);
+            if (cached != null
+                    && cached.lastModified().equals(lastModified)
+                    && cached.size() == size) {
+                return new HttpResponse(200, "OK", contentType(requested), cached.content());
             }
+
+            byte[] content = Files.readAllBytes(requested);
+            cache.put(requested, new CachedFile(content, lastModified, size));
             return new HttpResponse(200, "OK", contentType(requested), content);
         } catch (IOException e) {
             return HttpResponse.internalServerError("Could not read file");
@@ -79,4 +87,6 @@ public final class StaticFileServer {
                 ? MIME_TYPES.getOrDefault(name.substring(dot), "application/octet-stream")
                 : "application/octet-stream";
     }
+
+    private record CachedFile(byte[] content, FileTime lastModified, long size) {}
 }
