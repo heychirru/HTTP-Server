@@ -6,12 +6,18 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public final class HttpParser {
     private static final int MAX_HEADER_LINE = 8192;
     private static final int MAX_HEADER_SIZE = 64 * 1024;
+    private static final int MAX_HEADER_COUNT = 100;
     private static final int MAX_BODY_SIZE = 10 * 1024 * 1024;
+
+    private static final Set<String> SUPPORTED_METHODS =
+            Set.of("GET", "POST", "PUT", "DELETE", "HEAD");
 
     private HttpParser() {}
 
@@ -48,18 +54,58 @@ public final class HttpParser {
             throw HttpException.badRequest("Malformed HTTP request line");
         }
 
+        String method = parts[0].toUpperCase(Locale.ROOT);
+        String version = parts[2];
+
+        if (!SUPPORTED_METHODS.contains(method)) {
+            throw HttpException.notImplemented("HTTP method not implemented");
+        }
+
+        if (!"HTTP/1.0".equals(version) && !"HTTP/1.1".equals(version)) {
+            throw HttpException.httpVersionNotSupported("HTTP version not supported");
+        }
+
+        String target = parts[1];
+        if (!target.startsWith("/") || target.startsWith("//")) {
+            throw HttpException.badRequest("Invalid request target");
+        }
+
         Map<String, String> headers = new LinkedHashMap<>();
         for (int i = 1; i < lines.length; i++) {
             if (lines[i].isEmpty()) continue;
             if (lines[i].length() > MAX_HEADER_LINE) {
                 throw HttpException.requestHeaderFieldsTooLarge("HTTP header too large");
             }
+            if (headers.size() >= MAX_HEADER_COUNT) {
+                throw HttpException.requestHeaderFieldsTooLarge("Too many HTTP headers");
+            }
 
             int separator = lines[i].indexOf(':');
             if (separator <= 0) throw HttpException.badRequest("Malformed HTTP header");
 
-            headers.put(lines[i].substring(0, separator).trim().toLowerCase(),
-                    lines[i].substring(separator + 1).trim());
+            String name = lines[i].substring(0, separator);
+            if (!isToken(name)) throw HttpException.badRequest("Invalid HTTP header name");
+
+            String normalizedName = name.toLowerCase(Locale.ROOT);
+            String value = lines[i].substring(separator + 1).trim();
+
+            if (headers.containsKey(normalizedName)) {
+                if ("content-length".equals(normalizedName)) {
+                    throw HttpException.badRequest("Duplicate Content-Length");
+                }
+                headers.put(normalizedName, headers.get(normalizedName) + ", " + value);
+            } else {
+                headers.put(normalizedName, value);
+            }
+        }
+
+        String transferEncoding = headers.get("transfer-encoding");
+        if (transferEncoding != null && !transferEncoding.isBlank()) {
+            throw HttpException.notImplemented("Transfer-Encoding is not supported");
+        }
+
+        if ("HTTP/1.1".equals(version) && !headers.containsKey("host")) {
+            throw HttpException.badRequest("Host header is required for HTTP/1.1");
         }
 
         int contentLength = parseContentLength(headers.get("content-length"));
@@ -68,13 +114,25 @@ public final class HttpParser {
             throw HttpException.badRequest("Incomplete request body");
         }
 
-        String target = parts[1];
         int queryIndex = target.indexOf('?');
         String path = queryIndex >= 0 ? target.substring(0, queryIndex) : target;
         String query = queryIndex >= 0 ? target.substring(queryIndex + 1) : "";
 
-        return new HttpRequest(parts[0], path, parts[2], Map.copyOf(headers),
+        return new HttpRequest(method, path, version, Map.copyOf(headers),
                 new String(bodyBytes, StandardCharsets.UTF_8), Map.of(), parseQuery(query));
+    }
+
+    private static boolean isToken(String value) {
+        if (value.isEmpty()) return false;
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isLetterOrDigit(c)) continue;
+
+            if ("!#$%&'*+-.^_|~".indexOf(c) >= 0 || c == 96) continue;
+            return false;
+        }
+        return true;
     }
 
     private static Map<String, String> parseQuery(String query) throws IOException {
