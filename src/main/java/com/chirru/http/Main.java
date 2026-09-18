@@ -29,6 +29,14 @@ public final class Main {
         server.post("/users", request ->
                 HttpResponse.created("User endpoint reached."));
 
+        server.get("/users/me", request ->
+                HttpResponse.ok("text/plain; charset=UTF-8", "Static user route"));
+
+        server.get("/users/{id}", request ->
+                HttpResponse.ok(
+                        "text/plain; charset=UTF-8",
+                        "User ID: " + request.pathParam("id")));
+
         server.start();
     }
 }
