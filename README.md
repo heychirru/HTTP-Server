@@ -192,24 +192,51 @@ Request body:
 
     curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -d "{\"name\":\"Chirru\"}"
 
+## Phase 6 — Custom Concurrency & Server Lifecycle
+
+Phase 6 replaces the high-level `ExecutorService` approach with a small producer-consumer system built from Java threads, `wait()` / `notifyAll()`, and a bounded queue.
+
+Implemented:
+
+- [x] Bounded blocking request queue
+- [x] Producer-consumer worker architecture
+- [x] Custom worker pool
+- [x] Graceful worker shutdown
+- [x] Connection request limit
+
+## Phase 7 — LRU Caching
+
+Static files are cached with an LRU cache built from scratch.
+
+Implemented:
+
+- [x] HashMap + doubly linked list
+- [x] O(1) average `get()`
+- [x] O(1) average `put()`
+- [x] Least-recently-used eviction
+- [x] Thread-safe cache operations
+- [x] Static-file integration
+
 ## Phase 6 roadmap
 
 Phase 6 focuses on building the server's internal infrastructure instead of relying on high-level concurrency utilities.
 
-- [ ] Custom bounded request queue
-- [ ] Producer-consumer architecture
-- [ ] Custom thread pool
-- [ ] LRU cache from scratch
+- [x] Custom bounded request queue
+- [x] Producer-consumer architecture
+- [x] Custom thread pool
+- [x] LRU cache from scratch
 - [ ] Central error handling
 - [ ] Structured logging
 - [ ] HTTP integration tests
 - [ ] Load testing
 - [ ] Benchmarking and performance tuning
-- [ ] Graceful shutdown
+- [x] Graceful worker shutdown
 
 ## DSA and systems concepts
 
 - Trie and tree traversal
+- Doubly linked list + HashMap for LRU cache
+- Producer-consumer concurrency
 - HashMap
 - Queue
 - Producer-consumer pattern
