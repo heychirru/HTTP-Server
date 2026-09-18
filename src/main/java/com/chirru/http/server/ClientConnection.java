@@ -61,7 +61,9 @@ final class ClientConnection implements Runnable {
                         && requestCount + 1 < MAX_REQUESTS_PER_CONNECTION;
 
                 HttpResponse response = server.dispatch(request);
-                output.write(response.toBytes(keepAlive));
+                boolean includeBody = !"HEAD".equals(request.method());
+
+                output.write(response.toBytes(keepAlive, includeBody));
                 output.flush();
 
                 StructuredLogger.info("response_sent",
