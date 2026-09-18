@@ -1,6 +1,9 @@
 package com.chirru.http.http;
 
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 
 public record HttpResponse(int statusCode, String reason, String contentType, byte[] body) {
 
@@ -51,18 +54,38 @@ public record HttpResponse(int statusCode, String reason, String contentType, by
         return error(413, "Payload Too Large", body);
     }
 
+    public static HttpResponse notImplemented(String body) {
+        return error(501, "Not Implemented", body);
+    }
+
+    public static HttpResponse httpVersionNotSupported(String body) {
+        return error(505, "HTTP Version Not Supported", body);
+    }
+
     public static HttpResponse internalServerError(String body) {
         return error(500, "Internal Server Error", body);
     }
 
     public byte[] toBytes(boolean keepAlive) {
+        return toBytes(keepAlive, true);
+    }
+
+    public byte[] toBytes(boolean keepAlive, boolean includeBody) {
         String connection = keepAlive ? "keep-alive" : "close";
+        String date = ZonedDateTime.now(ZoneOffset.UTC)
+                .format(DateTimeFormatter.RFC_1123_DATE_TIME);
+
         String headers = "HTTP/1.1 " + statusCode + " " + reason + "\r\n"
+                + "Date: " + date + "\r\n"
+                + "Server: Chirru-HTTP/0.1\r\n"
                 + "Content-Type: " + contentType + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"
                 + "Connection: " + connection + "\r\n"
                 + "\r\n";
+
         byte[] headerBytes = headers.getBytes(StandardCharsets.ISO_8859_1);
+        if (!includeBody) return headerBytes;
+
         byte[] result = new byte[headerBytes.length + body.length];
         System.arraycopy(headerBytes, 0, result, 0, headerBytes.length);
         System.arraycopy(body, 0, result, headerBytes.length, body.length);
