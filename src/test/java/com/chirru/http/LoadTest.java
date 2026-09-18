@@ -56,7 +56,7 @@ public final class LoadTest {
                     for (int j = 0; j < count; j++) {
                         try {
                             var response = client.send(request, BodyHandlers.discarding());
-                            if (response.statusCode() >= 200 && response.statusCode() < 500) {
+                            if (response.statusCode() >= 200 && response.statusCode() < 300) {
                                 success.incrementAndGet();
                             } else {
                                 failure.incrementAndGet();
