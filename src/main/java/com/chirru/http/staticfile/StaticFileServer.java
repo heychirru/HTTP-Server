@@ -1,5 +1,6 @@
 package com.chirru.http.staticfile;
 
+import com.chirru.http.cache.LruCache;
 import com.chirru.http.http.HttpResponse;
 
 import java.io.IOException;
@@ -25,9 +26,15 @@ public final class StaticFileServer {
     );
 
     private final Path root;
+    private final LruCache<Path, byte[]> cache;
 
     public StaticFileServer(Path root) {
+        this(root, 128);
+    }
+
+    public StaticFileServer(Path root, int cacheCapacity) {
         this.root = root.toAbsolutePath().normalize();
+        this.cache = new LruCache<>(cacheCapacity);
     }
 
     public HttpResponse serve(String requestPath) {
@@ -50,10 +57,19 @@ public final class StaticFileServer {
         }
 
         try {
-            return new HttpResponse(200, "OK", contentType(requested), Files.readAllBytes(requested));
+            byte[] content = cache.get(requested);
+            if (content == null) {
+                content = Files.readAllBytes(requested);
+                cache.put(requested, content);
+            }
+            return new HttpResponse(200, "OK", contentType(requested), content);
         } catch (IOException e) {
             return HttpResponse.internalServerError("Could not read file");
         }
+    }
+
+    public int cacheSize() {
+        return cache.size();
     }
 
     private String contentType(Path path) {
