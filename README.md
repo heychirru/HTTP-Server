@@ -62,6 +62,21 @@ Example API:
         HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
     server.start();
 
+### Phase 3 — Dynamic Routing + Static Files
+- [x] Dynamic path parameters using `{id}` syntax
+- [x] Trie-based route matching
+- [x] Static route precedence over parameter routes
+- [x] Static file serving from the local filesystem
+- [x] MIME type detection for common web assets
+- [x] Path traversal protection
+
+Example:
+
+    server.get("/users/{id}", request ->
+        HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
+
+Static files are served from the `public/` directory through `/files/{path}`.
+
 ## Current Architecture
 
     Client
@@ -109,6 +124,9 @@ Example API:
     |   +-- Router.java
     |   +-- RouteTrie.java
     |
+    +-- staticfile/
+        +-- StaticFileServer.java
+    |
     +-- server/
         +-- ClientConnection.java
         +-- HttpServer.java
@@ -140,6 +158,7 @@ Using curl:
     curl -X DELETE http://localhost:8080/users
     curl http://localhost:8080/users/123
     curl http://localhost:8080/users/me
+    curl http://localhost:8080/files/index.html
 
 ## Roadmap
 - [x] TCP server
@@ -150,7 +169,7 @@ Using curl:
 - [x] GET / POST / PUT / DELETE routing
 - [x] Dynamic path parameters
 - [x] Trie-based routing
-- [ ] Static file server
+- [x] Static file server
 - [ ] Request body parsing
 - [ ] JSON responses
 - [ ] Query parameter parsing
