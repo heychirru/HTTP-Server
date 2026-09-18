@@ -8,9 +8,18 @@ public record HttpResponse(int statusCode, String reason, String contentType, by
         return new HttpResponse(200, "OK", contentType, body.getBytes(StandardCharsets.UTF_8));
     }
 
+    public static HttpResponse json(String json) {
+        return ok("application/json; charset=UTF-8", json);
+    }
+
     public static HttpResponse created(String body) {
         return new HttpResponse(201, "Created", "text/plain; charset=UTF-8",
                 body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static HttpResponse createdJson(String json) {
+        return new HttpResponse(201, "Created", "application/json; charset=UTF-8",
+                json.getBytes(StandardCharsets.UTF_8));
     }
 
     public static HttpResponse badRequest(String body) {
