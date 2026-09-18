@@ -1,60 +1,182 @@
 # Chirru HTTP Server
 
-A lightweight HTTP/1.1 server built from scratch with Core Java.
+A lightweight HTTP/1.1 server built completely from scratch using Core Java.
 
-## Rules
+> The goal is to understand how an HTTP server works internally instead of relying on Spring Boot or an existing server/framework.
 
-- No Spring Boot
-- No Spring Framework
-- No Tomcat / Jetty / Netty
-- No external HTTP server library
-- Java standard library for networking and HTTP handling
+## No Frameworks
 
-## Current milestone
+This project intentionally does not use:
+- Spring Boot
+- Spring Framework
+- Tomcat
+- Jetty
+- Netty
+- Undertow
+- Any external HTTP server library
 
-**Phase 1 — TCP + HTTP parsing + concurrent client handling**
+Only the Java standard library is used.
 
-Implemented:
-- `ServerSocket` TCP listener
-- `Socket` client connections
-- Java `ExecutorService` worker pool
-- Basic HTTP/1.1 request parser
-- HTTP response builder
-- `GET /` route
-- 404 response
-- UTF-8 HTML responses
+## Tech Stack
+- Java 21+
+- Java Networking (ServerSocket, Socket)
+- Java I/O
+- Java Concurrency (ExecutorService)
+- Java Collections
+- Maven
+
+## Current Progress
+
+### Phase 1 — TCP + HTTP Foundation
+- [x] TCP server using ServerSocket
+- [x] Client connections using Socket
+- [x] HTTP/1.1 request-line parsing
+- [x] HTTP header parsing
+- [x] HttpRequest model
+- [x] HttpResponse model
+- [x] HTTP status responses
+- [x] UTF-8 response bodies
+- [x] Concurrent client handling
+- [x] Fixed worker thread pool
+
+### Phase 2 — Routing
+- [x] Router abstraction
+- [x] Functional request handlers
+- [x] GET routes
+- [x] POST routes
+- [x] PUT routes
+- [x] DELETE routes
+- [x] Route lookup using HashMap
+- [x] Duplicate route protection
+- [x] 404 response for unknown routes
+
+Example API:
+
+    HttpServer server = new HttpServer(8080);
+    server.get("/", request -> HttpResponse.ok("text/plain", "Hello"));
+    server.get("/hello", request -> HttpResponse.ok("text/plain", "Hello, HTTP!"));
+    server.post("/users", request -> HttpResponse.created("User endpoint reached."));
+    server.start();
+
+## Current Architecture
+
+    Client
+       |
+       v
+    ServerSocket
+       |
+       v
+    ExecutorService
+       |
+       v
+    HTTP Parser
+       |
+       v
+    HttpRequest
+       |
+       v
+    Router (HashMap)
+       |
+       v
+    Handler
+       |
+       v
+    HttpResponse
+       |
+       v
+    Client
+
+## Project Structure
+
+    src/main/java/com/chirru/http/
+    |
+    +-- Main.java
+    |
+    +-- http/
+    |   +-- HttpParser.java
+    |   +-- HttpRequest.java
+    |   +-- HttpResponse.java
+    |
+    +-- router/
+    |   +-- Handler.java
+    |   +-- Router.java
+    |
+    +-- server/
+        +-- ClientConnection.java
+        +-- HttpServer.java
 
 ## Run
 
-Requires JDK 21+.
+Requires JDK 21+ and Maven.
 
-```bash
-mvn clean compile
-mvn exec:java
-```
+    mvn clean compile
+    mvn exec:java
 
-Open http://localhost:8080
+Server: http://localhost:8080
 
-Choose another port:
+Run on another port:
 
-```bash
-mvn exec:java -Dexec.args="9090"
-```
+    mvn exec:java -Dexec.args="9090"
+
+## Test
+
+Browser:
+    http://localhost:8080/
+    http://localhost:8080/hello
+
+Using curl:
+    curl http://localhost:8080/
+    curl http://localhost:8080/hello
+    curl -X POST http://localhost:8080/users
+    curl -X PUT http://localhost:8080/users
+    curl -X DELETE http://localhost:8080/users
 
 ## Roadmap
-
 - [x] TCP server
-- [x] Basic HTTP request parsing
+- [x] HTTP request parsing
 - [x] HTTP response generation
 - [x] Concurrent client handling
-- [ ] Router
+- [x] Basic HTTP router
+- [x] GET / POST / PUT / DELETE routing
 - [ ] Dynamic path parameters
+- [ ] Trie-based routing
 - [ ] Static file server
-- [ ] POST body parsing
+- [ ] Request body parsing
 - [ ] JSON responses
-- [ ] Keep-alive connections
+- [ ] Query parameter parsing
+- [ ] HTTP keep-alive
 - [ ] Custom bounded request queue
-- [ ] LRU cache implemented from scratch
-- [ ] Error handling and logging
+- [ ] Custom thread pool
+- [ ] LRU cache from scratch
+- [ ] Error handling system
+- [ ] Structured logging
 - [ ] HTTP integration tests
+- [ ] Load testing
 - [ ] Benchmarking and performance tuning
+- [ ] Graceful server shutdown
+
+## DSA & Systems Concepts
+- Hash tables
+- Trie
+- Queues
+- Doubly linked lists
+- LRU cache
+- Thread pools
+- Producer-consumer pattern
+- Concurrent programming
+- TCP/IP fundamentals
+- HTTP/1.1
+- Request parsing
+- Routing
+- File I/O
+- Caching
+- Performance optimization
+
+## Project Goal
+
+Build a working HTTP server from the ground up and understand the complete flow:
+
+    Browser -> TCP connection -> HTTP request -> Parser -> Router
+    -> Application handler -> HTTP response -> Browser
+
+**Core Java only. No Spring Boot.**
