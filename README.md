@@ -46,7 +46,9 @@ Only the Java standard library is used.
 - [x] POST routes
 - [x] PUT routes
 - [x] DELETE routes
-- [x] Route lookup using HashMap
+- [x] Route lookup using HashMap (Phase 2)
+- [x] Trie-based route matching with static-route precedence
+- [x] Dynamic path parameters such as /users/{id}
 - [x] Duplicate route protection
 - [x] 404 response for unknown routes
 
@@ -56,6 +58,8 @@ Example API:
     server.get("/", request -> HttpResponse.ok("text/plain", "Hello"));
     server.get("/hello", request -> HttpResponse.ok("text/plain", "Hello, HTTP!"));
     server.post("/users", request -> HttpResponse.created("User endpoint reached."));
+    server.get("/users/{id}", request ->
+        HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
     server.start();
 
 ## Current Architecture
@@ -75,7 +79,10 @@ Example API:
     HttpRequest
        |
        v
-    Router (HashMap)
+    Router (Trie)
+       |
+       +-- static segments
+       +-- parameter segments ({id})
        |
        v
     Handler
@@ -100,6 +107,7 @@ Example API:
     +-- router/
     |   +-- Handler.java
     |   +-- Router.java
+    |   +-- RouteTrie.java
     |
     +-- server/
         +-- ClientConnection.java
@@ -130,6 +138,8 @@ Using curl:
     curl -X POST http://localhost:8080/users
     curl -X PUT http://localhost:8080/users
     curl -X DELETE http://localhost:8080/users
+    curl http://localhost:8080/users/123
+    curl http://localhost:8080/users/me
 
 ## Roadmap
 - [x] TCP server
@@ -138,8 +148,8 @@ Using curl:
 - [x] Concurrent client handling
 - [x] Basic HTTP router
 - [x] GET / POST / PUT / DELETE routing
-- [ ] Dynamic path parameters
-- [ ] Trie-based routing
+- [x] Dynamic path parameters
+- [x] Trie-based routing
 - [ ] Static file server
 - [ ] Request body parsing
 - [ ] JSON responses
