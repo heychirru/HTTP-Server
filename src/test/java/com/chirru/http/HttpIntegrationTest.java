@@ -58,20 +58,24 @@ public final class HttpIntegrationTest {
                     .GET().build(), 200, "Hello, HTTP!");
 
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/users/42"))
-                    .GET().build(), 200, ""id":"42"");
+                    .GET().build(), 200, "\"id\":\"42\"");
 
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/"))
                     .GET().build(), 200, "<!DOCTYPE html>");
 
             HttpRequest post = HttpRequest.newBuilder(base.resolve("/users"))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString("{"name":"Chirru"}"))
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"Chirru\"}"))
                     .build();
 
             assertResponse(client, post, 201, "\"name\":\"Chirru\"");
 
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/missing"))
                     .GET().build(), 404, "Route not found");
+
+            assertResponse(client, HttpRequest.newBuilder(base.resolve("/hello"))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build(), 405, "Method not allowed");
 
             System.out.println("ALL INTEGRATION TESTS PASSED");
         } finally {
