@@ -1,228 +1,247 @@
 # Chirru HTTP Server
 
-A lightweight HTTP/1.1 server built completely from scratch using Core Java.
+A lightweight HTTP/1.1 web server built from scratch using Core Java.
 
-> The goal is to understand how an HTTP server works internally instead of relying on Spring Boot or an existing server/framework.
+## Why this project?
 
-## No Frameworks
+This project is a hands-on systems and DSA exercise. Instead of using a ready-made web server, we build the important pieces ourselves: TCP connections, HTTP parsing, routing, static files, request bodies, JSON, concurrency, caching, and shutdown.
 
-This project intentionally does not use:
-- Spring Boot
-- Spring Framework
-- Tomcat
-- Jetty
-- Netty
-- Undertow
-- Any external HTTP server library
+## Rules
 
-Only the Java standard library is used.
+Core Java only.
 
-## Tech Stack
-- Java 21+
-- Java Networking (ServerSocket, Socket)
-- Java I/O
-- Java Concurrency (ExecutorService)
-- Java Collections
-- Maven
+No Spring Boot, Spring Framework, Tomcat, Jetty, Netty, Undertow, or external HTTP server libraries.
 
-## Current Progress
+Java 21+ and Maven are used for the project build.
 
-### Phase 1 — TCP + HTTP Foundation
-- [x] TCP server using ServerSocket
-- [x] Client connections using Socket
-- [x] HTTP/1.1 request-line parsing
-- [x] HTTP header parsing
-- [x] HttpRequest model
-- [x] HttpResponse model
-- [x] HTTP status responses
-- [x] UTF-8 response bodies
-- [x] Concurrent client handling
-- [x] Fixed worker thread pool
+## Current status
 
-### Phase 2 — Routing
-- [x] Router abstraction
-- [x] Functional request handlers
-- [x] GET routes
-- [x] POST routes
-- [x] PUT routes
-- [x] DELETE routes
-- [x] Route lookup using HashMap (Phase 2)
-- [x] Trie-based route matching with static-route precedence
-- [x] Dynamic path parameters such as /users/{id}
-- [x] Duplicate route protection
-- [x] 404 response for unknown routes
+| Phase | Area | Status |
+|---|---|---|
+| 1 | TCP + HTTP foundation | Done |
+| 2 | Basic routing | Done |
+| 3 | Trie + dynamic routes | Done |
+| 4 | Static files + request bodies + JSON | Done |
+| 5 | Query parameters + HTTP keep-alive | Done |
+| 6 | Custom concurrency and systems layer | In progress |
 
-Example API:
+## Features implemented
 
-    HttpServer server = new HttpServer(8080);
-    server.get("/", request -> HttpResponse.ok("text/plain", "Hello"));
-    server.get("/hello", request -> HttpResponse.ok("text/plain", "Hello, HTTP!"));
-    server.post("/users", request -> HttpResponse.created("User endpoint reached."));
-    server.get("/users/{id}", request ->
-        HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
-    server.start();
+- TCP server using ServerSocket
+- Client connections using Socket
+- HTTP/1.1 request line and header parsing
+- Request body parsing with Content-Length
+- 10 MB request body limit
+- Query parameter parsing
+- Trie-based routing
+- Dynamic path parameters such as /users/{id}
+- Static route priority over parameter routes
+- HTML, CSS, JavaScript and image serving
+- public/ as the web root
+- MIME type detection
+- Path traversal protection
+- JSON response helper
+- Concurrent client handling
+- HTTP/1.1 keep-alive
+- Maximum 100 requests per connection
 
-### Phase 3 — Dynamic Routing + Static Files
-- [x] Dynamic path parameters using `{id}` syntax
-- [x] Trie-based route matching
-- [x] Static route precedence over parameter routes
-- [x] Static file serving from the local filesystem
-- [x] MIME type detection for common web assets
-- [x] Path traversal protection
-- [x] Web-root serving (`/` → `public/index.html`)
-
-### Phase 4 — Request Bodies + JSON
-- [x] Content-Length parsing
-- [x] Request body size limit (10 MB)
-- [x] UTF-8 request body decoding
-- [x] JSON response helper
-- [x] Minimal JSON object serialization
-
-Example:
+## Example routes
 
     server.get("/users/{id}", request ->
-        HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
+        HttpResponse.json(
+            Json.object(Map.of(
+                "id", request.pathParam("id"),
+                "message", "User found"
+            ))
+        ));
 
-Static files are served directly from the `public/` directory. `/` maps to `public/index.html`, `/style.css` maps to `public/style.css`, and so on.
+Request:
 
-## Current Architecture
+    GET /users/42
 
-    Client
+Path parameter:
+
+    request.pathParam("id")
+
+Query parameters:
+
+    GET /search?q=java&page=2
+
+Access:
+
+    request.queryParam("q")
+    request.queryParam("page")
+
+Request body:
+
+    request.body()
+
+## Static web files
+
+The public directory is the web root.
+
+    public/
+    ├── index.html
+    ├── style.css
+    ├── script.js
+    └── images/
+
+URLs map directly to files:
+
+    /              -> public/index.html
+    /style.css     -> public/style.css
+    /script.js     -> public/script.js
+    /images/a.png  -> public/images/a.png
+
+## Architecture
+
+    Browser
        |
        v
     ServerSocket
        |
        v
-    ExecutorService
+    Worker Executor
        |
        v
     HTTP Parser
+       |
+       +-- Request line
+       +-- Headers
+       +-- Body
+       +-- Query parameters
        |
        v
     HttpRequest
        |
        v
-    Router (Trie)
+    Trie Router
        |
-       +-- static segments
-       +-- parameter segments ({id})
+       +-- Static routes
+       +-- Dynamic routes
        |
-       v
-    Handler
-       |
-       v
-    HttpResponse
-       |
-       v
-    Client
+       +--------------------+
+       |                    |
+       v                    v
+    Handler            StaticFileServer
+       |                    |
+       +---------+----------+
+                 v
+            HttpResponse
+                 |
+                 v
+              Client
 
-## Project Structure
+## Project structure
 
-    src/main/java/com/chirru/http/
-    |
-    +-- Main.java
-    |
-    +-- http/
-    |   +-- HttpParser.java
-    |   +-- HttpRequest.java
-    |   +-- HttpResponse.java
-    |   +-- Json.java
-    |
-    +-- router/
-    |   +-- Handler.java
-    |   +-- Router.java
-    |   +-- RouteTrie.java
-    |
-    +-- staticfile/
-    |   +-- StaticFileServer.java
-    |
-    +-- public/
-        +-- index.html
-        +-- style.css
-        +-- script.js
-    |
-    +-- server/
-        +-- ClientConnection.java
-        +-- HttpServer.java
+    HTTP-Server/
+    ├── public/
+    │   ├── index.html
+    │   ├── style.css
+    │   └── script.js
+    │
+    ├── src/main/java/com/chirru/http/
+    │   ├── Main.java
+    │   ├── http/
+    │   │   ├── HttpParser.java
+    │   │   ├── HttpRequest.java
+    │   │   ├── HttpResponse.java
+    │   │   └── Json.java
+    │   ├── router/
+    │   │   ├── Handler.java
+    │   │   ├── Router.java
+    │   │   └── RouteTrie.java
+    │   ├── staticfile/
+    │   │   └── StaticFileServer.java
+    │   └── server/
+    │       ├── ClientConnection.java
+    │       └── HttpServer.java
+    │
+    └── pom.xml
 
 ## Run
 
-Requires JDK 21+ and Maven.
+Requirements: JDK 21+ and Maven.
 
     mvn clean compile
     mvn exec:java
 
-Server: http://localhost:8080
+Default address:
 
-Run on another port:
+    http://localhost:8080
+
+Use another port:
 
     mvn exec:java -Dexec.args="9090"
 
 ## Test
 
-Browser:
+Open the web server:
+
     http://localhost:8080/
-    http://localhost:8080/hello
 
-Using curl:
-    curl http://localhost:8080/
-    curl http://localhost:8080/hello
-    curl -X POST http://localhost:8080/users
-    curl -X PUT http://localhost:8080/users
-    curl -X DELETE http://localhost:8080/users
-    curl http://localhost:8080/users/123
-    curl http://localhost:8080/users/me
-    curl http://localhost:8080/
-    curl http://localhost:8080/style.css
-    curl http://localhost:8080/script.js
-    curl -X POST -H "Content-Type: application/json" -d "{\"name\":\"Chirru\"}" http://localhost:8080/users
+Dynamic route:
 
-## Roadmap
-- [x] TCP server
-- [x] HTTP request parsing
-- [x] HTTP response generation
-- [x] Concurrent client handling
-- [x] Basic HTTP router
-- [x] GET / POST / PUT / DELETE routing
-- [x] Dynamic path parameters
-- [x] Trie-based routing
-- [x] Static file server
-- [x] Request body parsing
-- [x] JSON responses
-- [ ] Query parameter parsing
-- [ ] HTTP keep-alive
+    http://localhost:8080/users/123
+
+Query parameters:
+
+    http://localhost:8080/search?q=java&page=2
+
+Request body:
+
+    curl -X POST http://localhost:8080/users -H "Content-Type: application/json" -d "{\"name\":\"Chirru\"}"
+
+## Phase 6 roadmap
+
+Phase 6 focuses on building the server's internal infrastructure instead of relying on high-level concurrency utilities.
+
 - [ ] Custom bounded request queue
+- [ ] Producer-consumer architecture
 - [ ] Custom thread pool
 - [ ] LRU cache from scratch
-- [ ] Error handling system
+- [ ] Central error handling
 - [ ] Structured logging
 - [ ] HTTP integration tests
 - [ ] Load testing
 - [ ] Benchmarking and performance tuning
-- [ ] Graceful server shutdown
+- [ ] Graceful shutdown
 
-## DSA & Systems Concepts
-- Hash tables
-- Trie
-- Queues
-- Doubly linked lists
-- LRU cache
-- Thread pools
+## DSA and systems concepts
+
+- Trie and tree traversal
+- HashMap
+- Queue
 - Producer-consumer pattern
-- Concurrent programming
-- TCP/IP fundamentals
+- Thread pools
+- Concurrency
+- TCP/IP
 - HTTP/1.1
-- Request parsing
-- Routing
+- Parsing
 - File I/O
-- Caching
+- LRU cache
 - Performance optimization
 
-## Project Goal
+## Goal
 
-Build a working HTTP server from the ground up and understand the complete flow:
+Build a small but real HTTP server while understanding every important layer that a framework normally hides.
 
-    Browser -> TCP connection -> HTTP request -> Parser -> Router
-    -> Application handler -> HTTP response -> Browser
+    HTTP Request
+        ↓
+      TCP
+        ↓
+     Parser
+        ↓
+   HttpRequest
+        ↓
+    Trie Router
+        ↓
+     Handler
+        ↓
+   HttpResponse
+        ↓
+      TCP
+        ↓
+     Client
 
-**Core Java only. No Spring Boot.**
+Built with Core Java only.
