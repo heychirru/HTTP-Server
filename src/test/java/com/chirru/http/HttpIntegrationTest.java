@@ -27,6 +27,11 @@ public final class HttpIntegrationTest {
         server.get("/hello", request ->
                 HttpResponse.ok("text/plain; charset=UTF-8", "Hello, HTTP!"));
 
+        server.get("/search", request ->
+                HttpResponse.json(Json.object(Map.of(
+                        "q", request.queryParam("q"),
+                        "page", request.queryParam("page")))));
+
         server.post("/users", request ->
                 HttpResponse.createdJson(Json.object(Map.of(
                         "body", request.body()))));
@@ -60,6 +65,10 @@ public final class HttpIntegrationTest {
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/users/42"))
                     .GET().build(), 200, "\"id\":\"42\"");
 
+            assertResponse(client, HttpRequest.newBuilder(
+                            URI.create(base + "/search?q=java&page=2"))
+                    .GET().build(), 200, "\"q\":\"java\"");
+
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/"))
                     .GET().build(), 200, "<!DOCTYPE html>");
 
@@ -76,6 +85,16 @@ public final class HttpIntegrationTest {
             assertResponse(client, HttpRequest.newBuilder(base.resolve("/hello"))
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .build(), 405, "Method not allowed");
+
+            java.net.http.HttpResponse<String> head = client.send(
+                    HttpRequest.newBuilder(base.resolve("/hello"))
+                            .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                            .build(),
+                    BodyHandlers.ofString());
+
+            if (head.statusCode() != 200 || !head.body().isEmpty()) {
+                throw new AssertionError("HEAD response should have status 200 and an empty body");
+            }
 
             System.out.println("ALL INTEGRATION TESTS PASSED");
         } finally {
