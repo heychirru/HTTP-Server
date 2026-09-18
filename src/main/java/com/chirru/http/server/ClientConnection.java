@@ -25,7 +25,7 @@ final class ClientConnection implements Runnable {
     @Override
     public void run() {
         String remote = String.valueOf(socket.getRemoteSocketAddress());
-
+        server.registerConnection(socket);
         StructuredLogger.info("connection_opened", Map.of("remote", remote));
 
         try (socket;
@@ -71,9 +71,12 @@ final class ClientConnection implements Runnable {
                 if (!keepAlive) return;
             }
         } catch (IOException e) {
-            StructuredLogger.warn("connection_io_failed",
-                    Map.of("remote", remote, "error", String.valueOf(e.getMessage())));
+            if (server.isRunning()) {
+                StructuredLogger.warn("connection_io_failed",
+                        Map.of("remote", remote, "error", String.valueOf(e.getMessage())));
+            }
         } finally {
+            server.unregisterConnection(socket);
             StructuredLogger.info("connection_closed", Map.of("remote", remote));
         }
     }
