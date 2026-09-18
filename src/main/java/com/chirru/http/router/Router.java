@@ -13,9 +13,15 @@ public final class Router {
     public Router post(String path, Handler handler) { return register("POST", path, handler); }
     public Router put(String path, Handler handler) { return register("PUT", path, handler); }
     public Router delete(String path, Handler handler) { return register("DELETE", path, handler); }
+    public Router head(String path, Handler handler) { return register("HEAD", path, handler); }
 
     public HttpResponse handle(HttpRequest request) {
         RouteTrie.Match match = routes.match(request.method(), request.path());
+
+        if (match == null && "HEAD".equals(request.method())) {
+            match = routes.match("GET", request.path());
+        }
+
         if (match == null) {
             Set<String> allowed = routes.allowedMethods(request.path());
             if (!allowed.isEmpty()) {
