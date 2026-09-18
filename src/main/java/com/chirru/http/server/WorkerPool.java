@@ -32,13 +32,18 @@ public final class WorkerPool {
         }
     }
 
-    public void shutdown() {
+    public synchronized void shutdown() {
         if (!running) return;
         running = false;
         queue.shutdown();
 
         for (Thread worker : workers) {
-            worker.interrupt();
+            try {
+                worker.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
     }
 
@@ -47,10 +52,12 @@ public final class WorkerPool {
             try {
                 Runnable task = queue.take();
                 if (task == null) break;
+
                 try {
                     task.run();
                 } catch (RuntimeException e) {
-                    System.err.println("Worker task error: " + e.getMessage());
+                    StructuredLogger.error("worker_task_failed",
+                            java.util.Map.of("error", String.valueOf(e.getMessage())));
                 }
             } catch (InterruptedException e) {
                 if (!running) break;
