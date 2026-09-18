@@ -69,13 +69,21 @@ Example API:
 - [x] Static file serving from the local filesystem
 - [x] MIME type detection for common web assets
 - [x] Path traversal protection
+- [x] Web-root serving (`/` → `public/index.html`)
+
+### Phase 4 — Request Bodies + JSON
+- [x] Content-Length parsing
+- [x] Request body size limit (10 MB)
+- [x] UTF-8 request body decoding
+- [x] JSON response helper
+- [x] Minimal JSON object serialization
 
 Example:
 
     server.get("/users/{id}", request ->
         HttpResponse.ok("text/plain", "User ID: " + request.pathParam("id")));
 
-Static files are served from the `public/` directory through `/files/{path}`.
+Static files are served directly from the `public/` directory. `/` maps to `public/index.html`, `/style.css` maps to `public/style.css`, and so on.
 
 ## Current Architecture
 
@@ -118,6 +126,7 @@ Static files are served from the `public/` directory through `/files/{path}`.
     |   +-- HttpParser.java
     |   +-- HttpRequest.java
     |   +-- HttpResponse.java
+    |   +-- Json.java
     |
     +-- router/
     |   +-- Handler.java
@@ -125,7 +134,12 @@ Static files are served from the `public/` directory through `/files/{path}`.
     |   +-- RouteTrie.java
     |
     +-- staticfile/
-        +-- StaticFileServer.java
+    |   +-- StaticFileServer.java
+    |
+    +-- public/
+        +-- index.html
+        +-- style.css
+        +-- script.js
     |
     +-- server/
         +-- ClientConnection.java
@@ -158,7 +172,10 @@ Using curl:
     curl -X DELETE http://localhost:8080/users
     curl http://localhost:8080/users/123
     curl http://localhost:8080/users/me
-    curl http://localhost:8080/files/index.html
+    curl http://localhost:8080/
+    curl http://localhost:8080/style.css
+    curl http://localhost:8080/script.js
+    curl -X POST -H "Content-Type: application/json" -d "{\"name\":\"Chirru\"}" http://localhost:8080/users
 
 ## Roadmap
 - [x] TCP server
@@ -170,8 +187,8 @@ Using curl:
 - [x] Dynamic path parameters
 - [x] Trie-based routing
 - [x] Static file server
-- [ ] Request body parsing
-- [ ] JSON responses
+- [x] Request body parsing
+- [x] JSON responses
 - [ ] Query parameter parsing
 - [ ] HTTP keep-alive
 - [ ] Custom bounded request queue
