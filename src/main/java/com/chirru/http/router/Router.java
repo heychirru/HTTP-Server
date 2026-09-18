@@ -15,18 +15,12 @@ public final class Router {
 
     public HttpResponse handle(HttpRequest request) {
         RouteTrie.Match match = routes.match(request.method(), request.path());
-
-        if (match == null) {
-            return HttpResponse.notFound("Route not found");
-        }
+        if (match == null) return HttpResponse.notFound("Route not found");
 
         HttpRequest routedRequest = new HttpRequest(
-                request.method(),
-                request.path(),
-                request.version(),
-                request.headers(),
-                request.body(),
-                match.pathParams());
+                request.method(), request.path(), request.version(),
+                request.headers(), request.body(),
+                match.pathParams(), request.queryParams());
 
         return match.handler().handle(routedRequest);
     }
@@ -34,7 +28,6 @@ public final class Router {
     private Router register(String method, String path, Handler handler) {
         Objects.requireNonNull(path, "path");
         Objects.requireNonNull(handler, "handler");
-
         routes.insert(method, path, handler);
         return this;
     }
