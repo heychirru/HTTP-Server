@@ -4,6 +4,7 @@ import com.chirru.http.http.HttpRequest;
 import com.chirru.http.http.HttpResponse;
 
 import java.util.Objects;
+import java.util.Set;
 
 public final class Router {
     private final RouteTrie routes = new RouteTrie();
@@ -15,7 +16,13 @@ public final class Router {
 
     public HttpResponse handle(HttpRequest request) {
         RouteTrie.Match match = routes.match(request.method(), request.path());
-        if (match == null) return HttpResponse.notFound("Route not found");
+        if (match == null) {
+            Set<String> allowed = routes.allowedMethods(request.path());
+            if (!allowed.isEmpty()) {
+                return HttpResponse.methodNotAllowed("Method not allowed");
+            }
+            return HttpResponse.notFound("Route not found");
+        }
 
         HttpRequest routedRequest = new HttpRequest(
                 request.method(), request.path(), request.version(),
