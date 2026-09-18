@@ -20,6 +20,7 @@ public final class HttpServer {
 
     public HttpServer(int port) {
         if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid port");
+        this.port = port;
         int workerCount = Math.max(4, Runtime.getRuntime().availableProcessors());
         this.workers = new WorkerPool(workerCount, 256);
     }
