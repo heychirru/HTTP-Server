@@ -10,20 +10,18 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class HttpServer {
     private final int port;
     private final Router router = new Router();
-    private final ExecutorService workers;
+    private final WorkerPool workers;
     private StaticFileServer staticFiles;
+    private volatile boolean running;
 
     public HttpServer(int port) {
         if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid port");
-        this.port = port;
-        this.workers = Executors.newFixedThreadPool(
-                Math.max(4, Runtime.getRuntime().availableProcessors()));
+        int workerCount = Math.max(4, Runtime.getRuntime().availableProcessors());
+        this.workers = new WorkerPool(workerCount, 256);
     }
 
     public HttpServer get(String path, Handler handler) { router.get(path, handler); return this; }
@@ -38,24 +36,31 @@ public final class HttpServer {
 
     HttpResponse dispatch(HttpRequest request) {
         HttpResponse response = router.handle(request);
-
-        if (response.statusCode() == 404
-                && staticFiles != null
-                && "GET".equals(request.method())) {
+        if (response.statusCode() == 404 && staticFiles != null && "GET".equals(request.method())) {
             return staticFiles.serve(request.path());
         }
-
         return response;
     }
 
     public void start() throws IOException {
-        Runtime.getRuntime().addShutdownHook(new Thread(workers::shutdown));
+        running = true;
         try (ServerSocket serverSocket = new ServerSocket(port)) {
+            Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "http-shutdown"));
             System.out.println("Chirru HTTP Server listening on http://localhost:" + port);
-            while (!serverSocket.isClosed()) {
+
+            while (running) {
                 Socket client = serverSocket.accept();
-                workers.submit(new ClientConnection(client, this));
+                if (!workers.submit(new ClientConnection(client, this))) {
+                    client.close();
+                }
             }
+        } finally {
+            workers.shutdown();
         }
+    }
+
+    public void stop() {
+        running = false;
+        workers.shutdown();
     }
 }
