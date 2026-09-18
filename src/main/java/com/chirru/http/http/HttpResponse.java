@@ -22,24 +22,37 @@ public record HttpResponse(int statusCode, String reason, String contentType, by
                 json.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static HttpResponse badRequest(String body) {
-        return new HttpResponse(400, "Bad Request", "text/plain; charset=UTF-8",
+    public static HttpResponse error(int statusCode, String reason, String body) {
+        return new HttpResponse(statusCode, reason, "text/plain; charset=UTF-8",
                 body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static HttpResponse badRequest(String body) {
+        return error(400, "Bad Request", body);
+    }
+
+    public static HttpResponse methodNotAllowed(String body) {
+        return error(405, "Method Not Allowed", body);
     }
 
     public static HttpResponse forbidden(String body) {
-        return new HttpResponse(403, "Forbidden", "text/plain; charset=UTF-8",
-                body.getBytes(StandardCharsets.UTF_8));
+        return error(403, "Forbidden", body);
     }
 
     public static HttpResponse notFound(String body) {
-        return new HttpResponse(404, "Not Found", "text/plain; charset=UTF-8",
-                body.getBytes(StandardCharsets.UTF_8));
+        return error(404, "Not Found", body);
+    }
+
+    public static HttpResponse requestHeaderFieldsTooLarge(String body) {
+        return error(431, "Request Header Fields Too Large", body);
+    }
+
+    public static HttpResponse payloadTooLarge(String body) {
+        return error(413, "Payload Too Large", body);
     }
 
     public static HttpResponse internalServerError(String body) {
-        return new HttpResponse(500, "Internal Server Error", "text/plain; charset=UTF-8",
-                body.getBytes(StandardCharsets.UTF_8));
+        return error(500, "Internal Server Error", body);
     }
 
     public byte[] toBytes(boolean keepAlive) {
