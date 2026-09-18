@@ -9,7 +9,9 @@ import com.chirru.http.staticfile.StaticFileServer;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.file.Path;
+import java.util.Map;
 
 public final class HttpServer {
     private final int port;
@@ -17,9 +19,10 @@ public final class HttpServer {
     private final WorkerPool workers;
     private StaticFileServer staticFiles;
     private volatile boolean running;
+    private volatile ServerSocket serverSocket;
 
     public HttpServer(int port) {
-        if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid port");
+        if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port");
         this.port = port;
         int workerCount = Math.max(4, Runtime.getRuntime().availableProcessors());
         this.workers = new WorkerPool(workerCount, 256);
@@ -35,33 +38,70 @@ public final class HttpServer {
         return this;
     }
 
+    public int getPort() {
+        ServerSocket socket = serverSocket;
+        if (socket == null) return -1;
+        return socket.getLocalPort();
+    }
+
     HttpResponse dispatch(HttpRequest request) {
-        HttpResponse response = router.handle(request);
-        if (response.statusCode() == 404 && staticFiles != null && "GET".equals(request.method())) {
-            return staticFiles.serve(request.path());
+        try {
+            HttpResponse response = router.handle(request);
+            if (response.statusCode() == 404 && staticFiles != null && "GET".equals(request.method())) {
+                return staticFiles.serve(request.path());
+            }
+            return response;
+        } catch (RuntimeException e) {
+            StructuredLogger.error("request_handler_failed",
+                    Map.of("method", request.method(), "path", request.path(),
+                            "error", String.valueOf(e.getMessage())));
+            return ErrorHandler.handle(e);
         }
-        return response;
     }
 
     public void start() throws IOException {
+        ServerSocket socket = new ServerSocket(port);
+        serverSocket = socket;
         running = true;
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "http-shutdown"));
-            System.out.println("Chirru HTTP Server listening on http://localhost:" + port);
 
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "http-shutdown"));
+        StructuredLogger.info("server_started",
+                Map.of("port", socket.getLocalPort()));
+
+        try (socket) {
             while (running) {
-                Socket client = serverSocket.accept();
-                if (!workers.submit(new ClientConnection(client, this))) {
-                    client.close();
+                try {
+                    Socket client = socket.accept();
+                    if (!workers.submit(new ClientConnection(client, this))) {
+                        client.close();
+                    }
+                } catch (SocketException e) {
+                    if (running) throw e;
+                    break;
                 }
             }
         } finally {
+            serverSocket = null;
+            running = false;
             workers.shutdown();
+            StructuredLogger.info("server_stopped", Map.of("port", socket.getLocalPort()));
         }
     }
 
     public void stop() {
+        if (!running) return;
         running = false;
+
+        ServerSocket socket = serverSocket;
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                StructuredLogger.warn("server_socket_close_failed",
+                        Map.of("error", String.valueOf(e.getMessage())));
+            }
+        }
+
         workers.shutdown();
     }
 }
