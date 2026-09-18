@@ -12,12 +12,15 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class HttpServer {
     private final int port;
     private final Router router = new Router();
     private final WorkerPool workers;
-    private StaticFileServer staticFiles;
+    private final Set<Socket> activeConnections = ConcurrentHashMap.newKeySet();
+    private volatile StaticFileServer staticFiles;
     private volatile boolean running;
     private volatile ServerSocket serverSocket;
 
@@ -45,6 +48,14 @@ public final class HttpServer {
 
     public boolean isRunning() {
         return running;
+    }
+
+    void registerConnection(Socket socket) {
+        activeConnections.add(socket);
+    }
+
+    void unregisterConnection(Socket socket) {
+        activeConnections.remove(socket);
     }
 
     HttpResponse dispatch(HttpRequest request) {
@@ -86,6 +97,7 @@ public final class HttpServer {
         } finally {
             serverSocket = null;
             running = false;
+            closeActiveConnections();
             workers.shutdown();
             StructuredLogger.info("server_stopped", Map.of("port", socket.getLocalPort()));
         }
@@ -105,6 +117,20 @@ public final class HttpServer {
             }
         }
 
+        closeActiveConnections();
         workers.shutdown();
+    }
+
+    private void closeActiveConnections() {
+        for (Socket connection : activeConnections) {
+            try {
+                connection.close();
+            } catch (IOException e) {
+                StructuredLogger.warn("connection_close_failed",
+                        Map.of("remote", String.valueOf(connection.getRemoteSocketAddress()),
+                                "error", String.valueOf(e.getMessage())));
+            }
+        }
+        activeConnections.clear();
     }
 }
