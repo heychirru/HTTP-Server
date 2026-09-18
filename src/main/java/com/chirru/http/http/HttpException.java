@@ -25,6 +25,14 @@ public final class HttpException extends RuntimeException {
         return new HttpException(400, "Bad Request", message);
     }
 
+    public static HttpException notImplemented(String message) {
+        return new HttpException(501, "Not Implemented", message);
+    }
+
+    public static HttpException httpVersionNotSupported(String message) {
+        return new HttpException(505, "HTTP Version Not Supported", message);
+    }
+
     public static HttpException requestHeaderFieldsTooLarge(String message) {
         return new HttpException(431, "Request Header Fields Too Large", message);
     }
