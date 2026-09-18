@@ -2,6 +2,9 @@ package com.chirru.http;
 
 import com.chirru.http.http.HttpResponse;
 import com.chirru.http.server.HttpServer;
+import com.chirru.http.staticfile.StaticFileServer;
+
+import java.nio.file.Path;
 
 public final class Main {
     private Main() {}
@@ -10,6 +13,7 @@ public final class Main {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
 
         HttpServer server = new HttpServer(port);
+        StaticFileServer files = new StaticFileServer(Path.of("public"));
 
         server.get("/", request -> HttpResponse.ok(
                 "text/html; charset=UTF-8",
@@ -22,6 +26,8 @@ public final class Main {
                   </body>
                 </html>
                 """));
+
+        server.get("/files/{path}", request -> files.serve("/" + request.pathParam("path")));
 
         server.get("/hello", request ->
                 HttpResponse.ok("text/plain; charset=UTF-8", "Hello, HTTP!"));
