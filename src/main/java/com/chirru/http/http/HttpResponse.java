@@ -8,8 +8,28 @@ public record HttpResponse(int statusCode, String reason, String contentType, by
         return new HttpResponse(200, "OK", contentType, body.getBytes(StandardCharsets.UTF_8));
     }
 
+    public static HttpResponse created(String body) {
+        return new HttpResponse(201, "Created", "text/plain; charset=UTF-8",
+                body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static HttpResponse badRequest(String body) {
+        return new HttpResponse(400, "Bad Request", "text/plain; charset=UTF-8",
+                body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static HttpResponse forbidden(String body) {
+        return new HttpResponse(403, "Forbidden", "text/plain; charset=UTF-8",
+                body.getBytes(StandardCharsets.UTF_8));
+    }
+
     public static HttpResponse notFound(String body) {
         return new HttpResponse(404, "Not Found", "text/plain; charset=UTF-8",
+                body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static HttpResponse internalServerError(String body) {
+        return new HttpResponse(500, "Internal Server Error", "text/plain; charset=UTF-8",
                 body.getBytes(StandardCharsets.UTF_8));
     }
 
